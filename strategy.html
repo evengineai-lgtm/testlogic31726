@@ -1,0 +1,159 @@
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Basement: Easy Mode</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <style>
+        :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --neu: #3498db; }
+        body { background: #0a0a0a; color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
+        
+        /* Header */
+        #header { padding: 20px 0; border-bottom: 1px solid #222; background: #111; height: 80px; }
+        .tally-label { font-size: 0.7rem; color: #888; letter-spacing: 2px; text-transform: uppercase; }
+        #running-tally { font-size: 2.2rem; font-weight: 900; color: var(--gold); display: block; transition: 0.2s; }
+        .pulse { transform: scale(1.2); color: white !important; }
+
+        /* Card Arena */
+        .card-container { position: relative; height: 60vh; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-top: 10px; }
+        .card { 
+            position: absolute; width: 220px; height: 320px; background: white; border-radius: 12px;
+            color: black; display: flex; justify-content: center; align-items: center;
+            font-size: 5rem; font-weight: bold; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            border: 3px solid #ccc; touch-action: none; z-index: 5; transition: border 0.2s;
+        }
+
+        /* Guides */
+        .guide-arrow { position: absolute; font-size: 0.7rem; font-weight: bold; opacity: 0.4; pointer-events: none; text-transform: uppercase; }
+        .left-arrow { left: 15px; color: var(--pos); }
+        .right-arrow { right: 15px; color: var(--neg); }
+        .down-arrow { bottom: 20px; color: var(--neu); }
+
+        /* Footer */
+        #footer { position: fixed; bottom: 0; width: 100%; background: #111; padding: 15px 0; border-top: 2px solid #333; display: flex; justify-content: space-around; }
+        .ref-item { font-size: 0.65rem; }
+        .ref-item span { display: block; font-size: 1rem; font-weight: bold; margin-bottom: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <span class="tally-label">Running Count</span>
+        <span id="running-tally">0</span>
+    </div>
+
+    <div class="card-container" id="arena">
+        <div class="guide-arrow left-arrow">← LOW (+1)</div>
+        <div class="guide-arrow right-arrow">HIGH (-1) →</div>
+        <div class="guide-arrow down-arrow">↓ NEUTRAL (0) ↓</div>
+    </div>
+
+    <div id="footer">
+        <div class="ref-item" style="color:var(--pos)"><span>2 - 6</span>+1</div>
+        <div class="ref-item" style="color:var(--neu)"><span>7 - 9</span>0</div>
+        <div class="ref-item" style="color:var(--neg)"><span>10 - A</span>-1</div>
+    </div>
+
+<script>
+    let state = {
+        deck: [],
+        count: 0
+    };
+
+    function createDeck() {
+        const v = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+        let d = [];
+        // 1 deck for the drill
+        for(let i=0; i<4; i++) v.forEach(val => d.push(val));
+        return d.sort(() => Math.random() - 0.5);
+    }
+
+    function updateTally(change) {
+        state.count += change;
+        const tallyEl = document.getElementById('running-tally');
+        tallyEl.innerText = state.count;
+        tallyEl.classList.add('pulse');
+        setTimeout(() => tallyEl.classList.remove('pulse'), 200);
+    }
+
+    function spawn() {
+        if (state.deck.length === 0) {
+            alert("Basement Drill Complete! Final Count: " + state.count);
+            state.deck = createDeck();
+            state.count = 0;
+            document.getElementById('running-tally').innerText = "0";
+            spawn();
+            return;
+        }
+
+        const val = state.deck.pop();
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerText = val;
+        document.getElementById('arena').appendChild(card);
+
+        const mc = new Hammer(card);
+        mc.get('pan').set({ direction: Hammer.DIRECTION_ALL, threshold: 5 });
+
+        mc.on("pan", (ev) => {
+            card.style.transform = `translate(${ev.deltaX * 0.4}px, ${ev.deltaY * 0.4}px) rotate(${ev.deltaX / 15}deg)`;
+        });
+
+        mc.on("panend", (ev) => {
+            const threshold = 80;
+            const velocity = Math.abs(ev.velocityX) > 0.4;
+            
+            const isLow = ['2','3','4','5','6'].includes(val);
+            const isHigh = ['10','J','Q','K','A'].includes(val);
+            const isNeutral = ['7','8','9'].includes(val);
+
+            let attempt = "";
+            if (ev.deltaX < -threshold || (ev.deltaX < -40 && ev.velocityX < -0.4)) attempt = "LEFT";
+            else if (ev.deltaX > threshold || (ev.deltaX > 40 && ev.velocityX > 0.4)) attempt = "RIGHT";
+            else if (ev.deltaY > threshold || (ev.deltaY > 40 && ev.velocityY > 0.4)) attempt = "DOWN";
+
+            // STRICT VALIDATION
+            const success = (attempt === "LEFT" && isLow) || 
+                            (attempt === "RIGHT" && isHigh) || 
+                            (attempt === "DOWN" && isNeutral);
+
+            if (success) {
+                const change = isLow ? 1 : (isHigh ? -1 : 0);
+                updateTally(change);
+                exit(card, attempt === "LEFT" ? -1000 : (attempt === "RIGHT" ? 1000 : 0), attempt === "DOWN" ? 1000 : 0);
+            } 
+            else if (attempt !== "") {
+                // Bounce back on error
+                card.style.transition = "0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+                card.style.border = "4px solid var(--neg)";
+                card.style.transform = "translate(0,0) rotate(0deg) scale(1.1)";
+                setTimeout(() => {
+                    card.style.border = "3px solid #ccc";
+                    card.style.transform = "translate(0,0) rotate(0deg) scale(1)";
+                }, 300);
+            } 
+            else {
+                card.style.transition = "0.2s";
+                card.style.transform = "translate(0,0) rotate(0deg)";
+            }
+        });
+    }
+
+    function exit(el, x, y) {
+        el.style.transition = "0.3s ease-out";
+        el.style.transform = `translate(${x}px, ${y}px) rotate(${x / 10}deg)`;
+        el.style.opacity = "0";
+        setTimeout(() => {
+            el.remove();
+            spawn();
+        }, 200);
+    }
+
+    state.deck = createDeck();
+    spawn();
+</script>
+</body>
+</html>

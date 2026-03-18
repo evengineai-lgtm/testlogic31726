@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hi-Lo Command Center</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <style>
+        :root { --gold: #f1c40f; --bg: #0a0a0a; --card: #161616; --border: #222; }
+        body { background: var(--bg); color: white; font-family: -apple-system, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        
+        /* Tab Navigation Logic */
+        .tab-content { display: none; height: calc(100vh - 75px); overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        .active-tab { display: block; }
+
+        /* Typography */
+        .header { text-align: center; margin: 10px 0 25px; }
+        .header h1 { font-size: 1.2rem; letter-spacing: 4px; margin: 0; color: #fff; }
+        .header p { color: var(--gold); font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; margin: 5px 0; }
+
+        /* Menu Styling */
+        .menu-grid { display: grid; gap: 12px; }
+        .menu-item { 
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 15px;
+            text-decoration: none; color: white; display: block; position: relative;
+        }
+        .menu-item:active { background: #222; border-color: var(--gold); }
+        .menu-item h3 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+        .menu-item p { margin: 5px 0 0; font-size: 0.7rem; color: #777; }
+        
+        /* Strategy Table Styling */
+        .table-wrap { margin-bottom: 30px; }
+        .table-title { font-size: 0.8rem; color: var(--gold); margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.65rem; background: #111; text-align: center; }
+        th, td { border: 1px solid #222; padding: 8px 2px; }
+        th { background: #222; color: #888; }
+        .s { background: #27ae60; color: #000; font-weight: bold; } /* Stay */
+        .h { background: #2c3e50; color: #fff; } /* Hit */
+        .d { background: var(--gold); color: #000; font-weight: bold; } /* Double */
+        .p { background: #8e44ad; color: #fff; } /* Split */
+
+        /* Nav Bar */
+        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 75px; background: #111; border-top: 1px solid #222; display: flex; justify-content: space-around; align-items: center; }
+        .nav-btn { background: none; border: none; color: #444; display: flex; flex-direction: column; align-items: center; font-size: 0.6rem; transition: 0.2s; }
+        .nav-btn.active { color: var(--gold); }
+        .nav-icon { font-size: 1.4rem; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+
+    <div id="drills" class="tab-content active-tab">
+        <div class="header">
+            <h1>TRAINING</h1>
+            <p>Sharpen the Count</p>
+        </div>
+        <div class="menu-grid">
+            <a href="basement.html" class="menu-item"><h3><span>🎯</span> Basement</h3><p>Beginner: Tallies & Guides visible.</p></a>
+            <a href="riverboat.html" class="menu-item"><h3><span>🚢</span> Riverboat</h3><p>Intermediate: Invisible count + checks.</p></a>
+            <a href="strip.html" class="menu-item"><h3><span>🔥</span> The Strip</h3><p>Expert: Fast timer + Joker distractions.</p></a>
+        </div>
+    </div>
+
+    <div id="game" class="tab-content">
+        <div class="header">
+            <h1>THE SHOW</h1>
+            <p>Live Game Play</p>
+        </div>
+        <div class="menu-grid">
+            <a href="table.html" class="menu-item" style="border-color: var(--gold); background: #1a1500;">
+                <h3 style="color: var(--gold);"><span>🃏</span> START GAME</h3>
+                <p style="color: #aa9900;">Apply your counting skills at a real table with full house rules.</p>
+            </a>
+        </div>
+    </div>
+
+    <div id="strategy" class="tab-content">
+        <div class="header"><h1>CHARTS</h1><p>Basic Strategy Reference</p></div>
+        
+        <div class="table-wrap">
+            <div class="table-title">HARD TOTALS</div>
+            <table>
+                <tr><th></th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>A</th></tr>
+                <tr><th>17+</th><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td></tr>
+                <tr><th>16</th><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="h">H</td><td class="h">H</td><td class="h">H</td><td class="h">H</td><td class="h">H</td></tr>
+                <tr><th>12</th><td class="h">H</td><td class="h">H</td><td class="s">S</td><td class="s">S</td><td class="s">S</td><td class="h">H</td><td class="h">H</td><td class="h">H</td><td class="h">H</td><td class="h">H</td></tr>
+                <tr><th>11</th><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="h">H</td></tr>
+                <tr><th>10</th><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="h">H</td><td class="h">H</td></tr>
+                <tr><th>9</th><td class="h">H</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="d">D</td><td class="h">H</td><td class="h">H</td><td class="h">H</td><td class="h">H</td><td class="h">H</td></tr>
+            </table>
+        </div>
+
+        <div class="table-wrap">
+            <div class="table-title">PAIRS</div>
+            <table>
+                <tr><th></th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>A</th></tr>
+                <tr><th>A,A</th><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td></tr>
+                <tr><th>8,8</th><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td></tr>
+                <tr><th>9,9</th><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="p">P</td><td class="s">S</td><td class="p">P</td><td class="p">P</td><td class="s">S</td><td class="s">S</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <nav class="nav-bar">
+        <button class="nav-btn active" onclick="switchTab(event, 'drills')"><span class="nav-icon">🏋️</span><span>Drills</span></button>
+        <button class="nav-btn" onclick="switchTab(event, 'game')"><span class="nav-icon">♠️</span><span>Game</span></button>
+        <button class="nav-btn" onclick="switchTab(event, 'strategy')"><span class="nav-icon">📖</span><span>Strategy</span></button>
+    </nav>
+
+    <script>
+        function switchTab(e, tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active-tab'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active-tab');
+            e.currentTarget.classList.add('active');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Count Gym: Shoe & Depth</title>
+    <style>
+        :root { 
+            --felt: #074d27; --gold: #f1c40f; --wood: #3d2b1f; --panel: #1a1a1a;
+            --pos: #2ecc71; --neg: #e74c3c; --neu: #3498db;
+        }
+        body { background: #000; color: white; font-family: 'Georgia', serif; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; align-items: center; }
+
+        #table-container {
+            position: relative; width: 95%; height: 420px; background: var(--felt);
+            margin-top: 10px; border-radius: 0 0 200px 200px;
+            border: 12px solid var(--wood); box-shadow: inset 0 0 80px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; align-items: center; justify-content: space-around;
+        }
+
+        /* Shoe & Discard Visuals */
+        .deck-visual { position: absolute; width: 60px; height: 80px; border-radius: 4px; border: 2px solid rgba(255,255,255,0.2); font-size: 0.6rem; display: flex; align-items: center; justify-content: center; text-align: center; color: rgba(255,255,255,0.5); }
+        #shoe-box { top: 20px; right: 30px; background: #222; transform: rotate(-15deg); }
+        #discard-box { top: 20px; left: 30px; background: rgba(0,0,0,0.3); transform: rotate(15deg); }
+        
+        #meter-wrap { position: absolute; top: 5%; width: 140px; text-align: center; z-index: 10; }
+        #meter-bar { width: 100%; height: 8px; background: #111; border-radius: 4px; overflow: hidden; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1); }
+        #meter-fill { width: 50%; height: 100%; background: var(--neu); transition: 0.5s; }
+
+        .hand-slot { display: flex; gap: 8px; min-height: 85px; align-items: center; justify-content: center; z-index: 2; transition: 0.3s; }
+        .bj-card { width: 48px; height: 72px; background: white; border-radius: 4px; color: black; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1rem; border: 1px solid #999; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
+        .card-back { background: #9b111e; border: 2px solid white; color: transparent !important; }
+        .active-hand { transform: scale(1.05); border: 2px solid var(--gold); border-radius: 8px; padding: 4px; background: rgba(255,215,0,0.1); }
+
+        #hud { width: 100%; background: var(--panel); padding: 10px 0; border-top: 4px solid var(--wood); display: flex; flex-direction: column; align-items: center; gap: 5px; flex-grow: 1; }
+        .bankroll-display { font-size: 1.8rem; color: var(--gold); font-weight: 900; }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 92%; max-width: 400px; }
+        .btn { padding: 12px; border-radius: 6px; border: none; font-weight: bold; font-size: 0.9rem; cursor: pointer; }
+        .btn-bet { background: var(--gold); color: black; }
+        .btn-deal { background: var(--pos); color: white; grid-column: span 2; }
+        .btn-action { background: var(--neu); color: white; }
+        .btn-stay { background: var(--neg); color: white; }
+        
+        /* Settings Bar */
+        #settings-bar { width: 100%; background: #000; padding: 10px 0; display: flex; justify-content: center; gap: 15px; border-top: 1px solid #333; align-items: center; }
+        select { background: #222; color: white; border: 1px solid var(--gold); padding: 5px; border-radius: 4px; }
+        .btn-reset { background: #444; color: white; padding: 5px 15px; border-radius: 4px; border: none; font-size: 0.7rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="table-container">
+        <div id="shoe-box" class="deck-visual">SHOE<br><span id="shoe-count">0</span></div>
+        <div id="discard-box" class="deck-visual">DISCARD<br><span id="discard-count">0</span></div>
+
+        <div id="meter-wrap">
+            <div id="meter-bar"><div id="meter-fill"></div></div>
+            <div style="font-size: 0.6rem; color: #888; margin-top:2px;">COUNT: <span id="true-count" style="color:white">0</span></div>
+        </div>
+
+        <div class="hand-slot" id="dealer-hand"></div>
+        <div id="hand-msg" style="color: var(--gold); font-weight: bold; height: 20px; font-size: 1rem;"></div>
+        <div id="player-hands-wrapper" style="display: flex; gap: 15px;"></div>
+    </div>
+
+    <div id="hud">
+        <div class="bankroll-display" id="bank-val">$500</div>
+        
+        <div class="btn-grid" id="bet-ui">
+            <button class="btn btn-bet" onclick="addBet(25)">+25</button>
+            <button class="btn btn-bet" onclick="addBet(100)">+100</button>
+            <button class="btn btn-deal" id="deal-btn" onclick="dealHand()">DEAL</button>
+        </div>
+
+        <div class="btn-grid" id="play-ui" style="display: none;">
+            <button class="btn btn-action" onclick="hit()">HIT</button>
+            <button class="btn btn-stay" onclick="stand()">STAY</button>
+            <button class="btn btn-action" id="double-btn" onclick="doubleDown()">DOUBLE</button>
+            <button class="btn btn-action" id="split-btn" onclick="splitHand()">SPLIT</button>
+        </div>
+    </div>
+
+    <div id="settings-bar">
+        <span style="font-size: 0.7rem; color: #aaa;">DECKS:</span>
+        <select id="deck-select" onchange="reshuffle()">
+            <option value="1">1 Deck</option>
+            <option value="2">2 Decks</option>
+            <option value="6" selected>6 Decks</option>
+            <option value="8">8 Decks</option>
+        </select>
+        <button class="btn-reset" onclick="reshuffle()">RESHUFFLE SHOE</button>
+    </div>
+
+<script>
+    let state = {
+        bankroll: 500, bet: 0, count: 0,
+        shoe: [], discard: [],
+        hands: [[]], activeIdx: 0,
+        dealerHand: [], dealerRevealed: false, isPlaying: false
+    };
+
+    function track(val) {
+        if (['2','3','4','5','6'].includes(val)) state.count++;
+        if (['10','J','Q','K','A'].includes(val)) state.count--;
+        
+        const percent = 50 + (state.count * 3); 
+        document.getElementById('meter-fill').style.width = Math.min(Math.max(percent, 0), 100) + "%";
+        document.getElementById('true-count').innerText = state.count;
+    }
+
+    function buildShoe(numDecks) {
+        const v = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+        let newShoe = [];
+        for (let i = 0; i < numDecks * 4; i++) {
+            v.forEach(card => newShoe.push({v: card}));
+        }
+        return newShoe.sort(() => Math.random() - 0.5);
+    }
+
+    function reshuffle() {
+        const num = parseInt(document.getElementById('deck-select').value);
+        state.shoe = buildShoe(num);
+        state.discard = [];
+        state.count = 0;
+        state.isPlaying = false;
+        state.bet = 0;
+        state.hands = [[]];
+        state.dealerHand = [];
+        track(null); 
+        document.getElementById('bet-ui').style.display = 'grid';
+        document.getElementById('play-ui').style.display = 'none';
+        document.getElementById('hand-msg').innerText = "SHOE RESET";
+        render();
+    }
+
+    function draw(toTrack = true) {
+        if (state.shoe.length < 10) reshuffle();
+        const card = state.shoe.pop();
+        if (toTrack) track(card.v);
+        return card;
+    }
+
+    function dealHand() {
+        if (state.bet === 0) return;
+        state.bankroll -= state.bet;
+        state.isPlaying = true;
+        state.dealerRevealed = false;
+        state.activeIdx = 0;
+        
+        state.hands = [[draw(), draw()]];
+        state.dealerHand = [draw(true), draw(false)]; // Hole card not tracked yet
+
+        // Blackjack Check
+        if (getScore(state.dealerHand) === 21) {
+            setTimeout(() => resolveAll(true), 800);
+            return;
+        }
+
+        document.getElementById('bet-ui').style.display = 'none';
+        document.getElementById('play-ui').style.display = 'grid';
+        render();
+    }
+
+    function addBet(amt) {
+        if (!state.isPlaying && state.bankroll >= state.bet + amt) {
+            state.bet += amt;
+            document.getElementById('deal-btn').innerText = `DEAL $${state.bet}`;
+        }
+    }
+
+    function render() {
+        const wrapper = document.getElementById('player-hands-wrapper');
+        wrapper.innerHTML = '';
+        state.hands.forEach((h, i) => {
+            const div = document.createElement('div');
+            div.className = `hand-slot ${i === state.activeIdx && state.isPlaying ? 'active-hand' : ''}`;
+            div.innerHTML = h.map(c => `<div class="bj-card">${c.v}</div>`).join('');
+            wrapper.appendChild(div);
+        });
+
+        const dSlot = document.getElementById('dealer-hand');
+        if (state.dealerRevealed) {
+            dSlot.innerHTML = state.dealerHand.map(c => `<div class="bj-card">${c.v}</div>`).join('');
+        } else if (state.dealerHand.length > 0) {
+            dSlot.innerHTML = `<div class="bj-card">${state.dealerHand[0].v}</div><div class="bj-card card-back">?</div>`;
+        } else {
+            dSlot.innerHTML = '';
+        }
+
+        document.getElementById('shoe-count').innerText = state.shoe.length;
+        document.getElementById('discard-count').innerText = state.discard.length;
+        document.getElementById('bank-val').innerText = `$${state.bankroll}`;
+        
+        if (state.isPlaying) {
+            const h = state.hands[state.activeIdx];
+            document.getElementById('split-btn').disabled = (h.length !== 2 || h[0].v !== h[1].v || state.bankroll < state.bet);
+            document.getElementById('double-btn').disabled = (h.length !== 2 || state.bankroll < state.bet);
+        }
+    }
+
+    function hit() {
+        state.hands[state.activeIdx].push(draw());
+        render();
+        if (getScore(state.hands[state.activeIdx]) > 21) nextHand();
+    }
+
+    function splitHand() {
+        const h = state.hands[state.activeIdx];
+        const card = h.pop();
+        state.hands.push([card, draw()]);
+        h.push(draw());
+        state.bankroll -= state.bet;
+        render();
+    }
+
+    function doubleDown() {
+        state.bankroll -= state.bet;
+        state.bet *= 2; 
+        state.hands[state.activeIdx].push(draw());
+        render();
+        nextHand();
+    }
+
+    function stand() { nextHand(); }
+
+    function nextHand() {
+        if (state.activeIdx < state.hands.length - 1) {
+            state.activeIdx++;
+            render();
+        } else {
+            resolveAll();
+        }
+    }
+
+    function resolveAll(immediateBJ = false) {
+        state.dealerRevealed = true;
+        track(state.dealerHand[1].v); // Reveal hole card
+
+        if (!immediateBJ) {
+            while(getScore(state.dealerHand) < 17) state.dealerHand.push(draw());
+        }
+        
+        render();
+        const dScore = getScore(state.dealerHand);
+        let totalWin = 0;
+
+        state.hands.forEach(h => {
+            const pScore = getScore(h);
+            const isBJ = h.length === 2 && pScore === 21;
+            const dIsBJ = state.dealerHand.length === 2 && dScore === 21;
+
+            if (pScore > 21) return;
+            if (isBJ && !dIsBJ) totalWin += state.bet * 2.5;
+            else if (pScore > dScore || dScore > 21) totalWin += state.bet * 2;
+            else if (pScore === dScore) totalWin += state.bet;
+            
+            // Move played cards to discard
+            state.discard.push(...h);
+        });
+        state.discard.push(...state.dealerHand);
+
+        state.bankroll += totalWin;
+        document.getElementById('hand-msg').innerText = immediateBJ ? "DEALER BLACKJACK" : (totalWin > 0 ? "WIN" : "LOSS");
+
+        setTimeout(() => {
+            state.isPlaying = false;
+            state.bet = 0;
+            state.hands = [[]];
+            state.dealerHand = [];
+            document.getElementById('hand-msg').innerText = "";
+            document.getElementById('bet-ui').style.display = 'grid';
+            document.getElementById('play-ui').style.display = 'none';
+            document.getElementById('deal-btn').innerText = "DEAL";
+            render();
+        }, 2000);
+    }
+
+    function getScore(hand) {
+        let s = 0, a = 0;
+        hand.forEach(c => {
+            if (c.v === 'A') { a++; s += 11; }
+            else if (['J','Q','K','10'].includes(c.v)) s += 10;
+            else s += parseInt(c.v);
+        });
+        while (s > 21 && a > 0) { s -= 10; a--; }
+        return s;
+    }
+
+    reshuffle();
+</script>
+</body>
+</html>

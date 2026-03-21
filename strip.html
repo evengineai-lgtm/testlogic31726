@@ -85,7 +85,7 @@
         return d.sort(() => Math.random() - 0.5);
     }
 
-    function resetTimerBar() {
+    function resetTimerVisuals() {
         const bar = document.getElementById('timer-bar');
         bar.style.transition = 'none';
         bar.style.transform = 'scaleX(1)';
@@ -107,7 +107,7 @@
     }
 
     function spawnBatch() {
-        resetTimerBar();
+        resetTimerVisuals();
         state.cardsInHand = 0;
         const arena = document.getElementById('arena');
         arena.innerHTML = "";
@@ -134,11 +134,14 @@
         document.getElementById('arena').appendChild(card);
 
         const mc = new Hammer(card);
-        mc.get('pan').set({ direction: Hammer.DIRECTION_ALL });
+        mc.get('pan').set({ direction: Hammer.DIRECTION_ALL, threshold: 0 });
+
+        mc.on("panstart", () => {
+            // Trigger timer immediately when the finger touches/starts moving
+            if (!state.timerActive) startTimer();
+        });
 
         mc.on("pan", ev => {
-            // Timer starts as soon as the user touches/pans the first card of a batch
-            if (!state.timerActive) startTimer();
             card.style.transform = `translate(${ev.deltaX + (index*8)}px, ${ev.deltaY + (index*8)}px) rotate(${ev.deltaX/12}deg)`;
         });
 

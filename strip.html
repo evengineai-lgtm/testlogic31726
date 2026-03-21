@@ -5,232 +5,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Strip: Pulse Mode</title>
+    <title>Pulse v7: Side-by-Side</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <style>
-        :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --joker: #9b59b6; --bg: #0a0a0a; }
-        body { background: var(--bg); color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; touch-action: none; }
+        :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --bg: #0a0a0a; --gray: #1a1a1a; }
+        body { 
+            background: var(--bg); color: white; font-family: 'Segoe UI', Roboto, sans-serif; 
+            text-align: center; margin: 0; overflow: hidden; height: 100vh; touch-action: none;
+            transition: background 0.8s ease;
+        }
         
-        #back-home { position: fixed; top: 15px; left: 15px; z-index: 1000; background: rgba(255,255,255,0.1); color: #888; border: 1px solid #333; padding: 8px 12px; border-radius: 8px; font-size: 0.7rem; text-decoration: none; text-transform: uppercase; }
+        #header { padding: 35px 20px 15px; background: rgba(0,0,0,0.9); border-bottom: 1px solid #222; }
+        .streak-container { display: flex; flex-direction: column; align-items: center; }
+        #stat-streak { font-size: 3.5rem; font-weight: 900; color: var(--gold); line-height: 1; }
+        #stat-streak.pos-pulse { animation: posPulse 0.3s; }
+        .stat-label { font-size: 0.7rem; color: #555; letter-spacing: 4px; text-transform: uppercase; margin-top: 8px; }
         
-        #header { padding: 25px 20px 15px; background: #111; border-bottom: 1px solid #222; position: relative; }
-        .stat-group { display: flex; flex-direction: column; align-items: center; }
-        .stat-label { font-size: 0.6rem; color: #555; letter-spacing: 2px; margin-bottom: 4px; }
-        .stat-val-main { color: var(--gold); font-size: 2.5rem; font-weight: 900; line-height: 1; }
-        #batch-tag { position: absolute; right: 20px; bottom: 15px; color: #444; font-size: 0.8rem; font-weight: bold; border: 1px solid #222; padding: 4px 8px; border-radius: 4px; }
-
-        #timer-container { width: 100%; height: 8px; background: #1a1a1a; overflow: hidden; }
+        #timer-container { width: 100%; height: 6px; background: #111; }
         #timer-bar { width: 100%; height: 100%; background: var(--gold); transform-origin: left; transform: scaleX(1); }
 
-        .card-container { position: relative; height: 55vh; width: 100%; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-top: 20px; }
-        .card { 
-            position: absolute; width: 210px; height: 300px; background: white; border-radius: 14px;
-            color: black; display: flex; justify-content: center; align-items: center;
-            font-size: 5rem; font-weight: bold; box-shadow: 0 15px 50px rgba(0,0,0,0.9);
-            border: 2px solid #ccc; touch-action: none; z-index: 10;
+        /* Updated Arena for Side-by-Side */
+        .card-container { 
+            position: relative; height: 50vh; width: 100%; 
+            display: flex; justify-content: center; align-items: center; 
+            gap: 15px; /* Space between side-by-side cards */
+            margin-top: 20px; padding: 0 10px; box-sizing: border-box;
         }
-        .joker-card { background: #1a1a1a !important; color: var(--joker) !important; border: 4px solid var(--joker) !important; font-size: 2.5rem !important; }
+        .card { 
+            position: relative; width: 160px; height: 240px; background: white; border-radius: 12px;
+            color: black; display: flex; justify-content: center; align-items: center;
+            font-size: 4rem; font-weight: 900; box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+            border: 1px solid #ddd; z-index: 10; transition: transform 0.1s;
+        }
+        /* Single card mode - make it bigger */
+        .single-card { width: 220px; height: 310px; font-size: 6rem; }
 
-        #verify-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
-        .verify-box { background: #1a1a1a; padding: 30px; border-radius: 15px; border: 2px solid var(--gold); width: 80%; max-width: 300px; }
-        #count-input { width: 100%; background: #000; border: 1px solid #444; color: var(--gold); font-size: 3.5rem; text-align: center; margin: 20px 0; border-radius: 8px; outline: none; }
-        .verify-btn { background: var(--gold); color: black; border: none; padding: 18px; width: 100%; font-weight: 900; border-radius: 8px; font-size: 1.2rem; }
+        #level-indicator { margin-top: 15px; font-weight: bold; color: #444; letter-spacing: 2px; font-size: 0.9rem; }
+        #stat-cycle { color: #888; margin-left: 5px; }
 
-        #level-toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); color: var(--gold); font-weight: 900; font-size: 2rem; z-index: 3000; display: none; text-shadow: 0 0 20px black; }
+        /* Choice Grid */
+        #verify-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+        .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 360px; margin-top: 25px; }
+        .chip { background: var(--gray); border: 2px solid #333; color: white; padding: 28px 0; font-size: 2.2rem; font-weight: 900; border-radius: 10px; outline: none; }
+        .chip:active { background: var(--gold); color: black; }
+
+        #level-toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; font-weight: 900; color: var(--gold); display: none; z-index: 3000; }
+
+        @keyframes posPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); color: var(--pos); } 100% { transform: scale(1); } }
+        .flash-success { animation: flashGreen 0.4s; }
+        @keyframes flashGreen { 0% { background: var(--bg); } 50% { background: #1a331a; } 100% { background: var(--bg); } }
     </style>
 </head>
 <body>
 
-    <a href="index.html" id="back-home">← Home</a>
-
     <div id="header">
-        <div class="stat-group">
-            <span class="stat-label">STREAK</span>
-            <span id="stat-streak" class="stat-val-main">0</span>
+        <div class="streak-container">
+            <span id="stat-streak">0</span>
+            <span class="stat-label">Streak</span>
         </div>
-        <div id="batch-tag">BATCH: <span id="stat-batch">1x</span></div>
     </div>
     
     <div id="timer-container"><div id="timer-bar"></div></div>
-    
-    <div id="level-toast">SPEED UP!</div>
-
+    <div id="level-toast">JACKPOT!</div>
     <div class="card-container" id="arena"></div>
+    <div id="level-indicator">CYCLE <span id="stat-cycle">1</span></div>
 
     <div id="verify-overlay">
-        <div class="verify-box">
-            <h3 style="margin:0; color:white; letter-spacing:1px;">VERIFY COUNT</h3>
-            <input type="number" id="count-input" inputmode="numeric" placeholder="0">
-            <button class="verify-btn" onclick="checkCount()">SUBMIT</button>
-            <p id="error-msg" style="color:var(--neg); margin-top:15px; display:none;"></p>
-        </div>
+        <h2 style="margin:0; letter-spacing:3px; color:#555; font-size:0.75rem; text-transform: uppercase;">Verify True Count</h2>
+        <div class="choice-grid" id="chip-container"></div>
     </div>
 
 <script>
-    let state = { 
-        deck: [], count: 0, streak: 0, 
-        cardsInHand: 0, batchSize: 1, 
-        speed: 5, totalSeen: 0, checkAt: 10,
-        timerActive: false 
+    let state = {
+        streak: 0, count: 0, cycle: 1, batchSize: 1, totalSeen: 0,
+        currentSpeed: 6.0, startSpeed: 6.0, endSpeed: 4.0, timerActive: false,
+        cardsSwipedInBatch: 0
     };
+
     let currentTimer;
+    const themes = ["#0a0a0a", "#051616", "#160516", "#161105"];
 
-    function createDeck() {
-        const v = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-        let d = []; 
-        for(let i=0; i<8; i++) {
-            v.forEach(val => d.push(val));
-            if(Math.random() > 0.75) d.push("JOKER");
-        }
-        return d.sort(() => Math.random() - 0.5);
-    }
-
-    function resetTimerVisuals() {
-        const bar = document.getElementById('timer-bar');
-        bar.style.transition = 'none';
-        bar.style.transform = 'scaleX(1)';
-        state.timerActive = false;
-        clearTimeout(currentTimer);
-    }
-
-    function startTimerPulse() {
-        // Stop any existing timer
-        clearTimeout(currentTimer);
-        const bar = document.getElementById('timer-bar');
-        
-        // Snap back to full
-        bar.style.transition = 'none';
-        bar.style.transform = 'scaleX(1)';
-        void bar.offsetWidth; 
-        
-        // Start the drop
-        state.timerActive = true;
-        bar.style.transition = `transform ${state.speed}s linear`;
-        bar.style.transform = 'scaleX(0)';
-
-        currentTimer = setTimeout(() => {
-            gameOver("TIME EXPIRED!");
-        }, state.speed * 1000);
+    function updateUI() {
+        document.getElementById('stat-cycle').innerText = state.cycle;
+        document.body.style.background = themes[(state.cycle - 1) % 4];
     }
 
     function spawnNextBatch() {
-        state.cardsInHand = 0;
         const arena = document.getElementById('arena');
         arena.innerHTML = "";
+        state.cardsSwipedInBatch = 0;
 
-        if (state.totalSeen >= state.checkAt) {
-            resetTimerVisuals();
-            document.getElementById('verify-overlay').style.display = 'flex';
-            document.getElementById('count-input').focus();
-            return;
-        }
-
-        for (let i = 0; i < state.batchSize; i++) {
-            spawnCard(i);
-        }
+        if (state.totalSeen >= 10) { showGrid(); return; }
+        
+        let progress = state.totalSeen / 10; 
+        state.currentSpeed = state.startSpeed - (progress * (state.startSpeed - state.endSpeed));
+        
+        for (let i = 0; i < state.batchSize; i++) { spawnCard(); }
     }
 
-    function spawnCard(index) {
-        if (state.deck.length === 0) state.deck = createDeck();
-        const val = state.deck.pop();
+    function spawnCard() {
+        const vals = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+        const val = vals[Math.floor(Math.random() * vals.length)];
         const card = document.createElement('div');
-        card.className = val === "JOKER" ? 'card joker-card' : 'card';
+        card.className = state.batchSize === 1 ? 'card single-card' : 'card';
         card.innerText = val;
-        
-        card.style.transform = `translate(${index * 8}px, ${index * 8}px)`;
         document.getElementById('arena').appendChild(card);
 
-        // First touch of the batch starts the pulse
-        const triggerTimer = () => {
-            if (!state.timerActive) startTimerPulse();
-            card.removeEventListener('pointerdown', triggerTimer);
-        };
-        card.addEventListener('pointerdown', triggerTimer);
+        card.addEventListener('pointerdown', () => { if(!state.timerActive) startPulse(); });
 
         const mc = new Hammer(card);
         mc.get('pan').set({ direction: Hammer.DIRECTION_ALL, threshold: 0 });
-
         mc.on("pan", ev => {
-            card.style.transform = `translate(${ev.deltaX + (index*8)}px, ${ev.deltaY + (index*8)}px) rotate(${ev.deltaX/12}deg)`;
+            card.style.transform = `translate(${ev.deltaX}px, ${ev.deltaY}px) rotate(${ev.deltaX/15}deg)`;
+            card.style.zIndex = 100; // Bring to front while dragging
         });
 
         mc.on("panend", ev => {
-            const isLow = ['2','3','4','5','6'].includes(val);
-            const isHigh = ['10','J','Q','K','A'].includes(val);
-            const isNeutral = ['7','8','9'].includes(val);
-            const isJoker = val === "JOKER";
-
-            let dir = "";
-            if (ev.deltaX < -60) dir = "L";
-            else if (ev.deltaX > 60) dir = "R";
-            else if (ev.deltaY > 60) dir = "D";
-            else if (ev.deltaY < -60) dir = "U";
-
             let correct = false;
-            if (isJoker && dir === "U") correct = true;
-            else if (!isJoker) {
-                if (dir === "L" && isLow) { state.count++; correct = true; }
-                else if (dir === "R" && isHigh) { state.count--; correct = true; }
-                else if (dir === "D" && isNeutral) { correct = true; }
-            }
+            if (ev.deltaX < -60 && ['2','3','4','5','6'].includes(val)) { state.count++; correct = true; }
+            if (ev.deltaX > 60 && ['10','J','Q','K','A'].includes(val)) { state.count--; correct = true; }
+            if (ev.deltaY > 60 && ['7','8','9'].includes(val)) { correct = true; }
 
             if (correct) {
+                triggerStreakJuice();
                 state.streak++;
                 state.totalSeen++;
-                state.cardsInHand++;
-                document.getElementById('stat-streak').innerText = state.streak;
+                state.cardsSwipedInBatch++;
                 card.remove();
                 
-                // IF CORRECT: Trigger a fresh timer pulse for the next card immediately
-                if (state.totalSeen < state.checkAt) {
-                    startTimerPulse();
-                }
-
-                if (state.cardsInHand === state.batchSize) {
+                // If all cards in the current side-by-side deal are gone, spawn next set
+                if (state.cardsSwipedInBatch === state.batchSize) {
+                    if (state.totalSeen < 10) startPulse(); // Reset timer for the next 2 cards
                     spawnNextBatch();
                 }
-            } else if (dir !== "") {
-                gameOver(isJoker ? "JOKERS SWIPE UP!" : "WRONG DIRECTION!");
+                updateUI();
+            } else if (Math.abs(ev.deltaX) > 60 || Math.abs(ev.deltaY) > 60) {
+                gameOver(`BUSTED! Count was ${state.count}`);
             } else {
-                card.style.transform = `translate(${index * 8}px, ${index * 8}px)`;
+                card.style.transform = `translate(0, 0)`;
+                card.style.zIndex = 10;
             }
         });
     }
 
-    function checkCount() {
-        const input = document.getElementById('count-input');
-        const userGuess = parseInt(input.value);
-        if (userGuess === state.count) {
-            document.getElementById('verify-overlay').style.display = 'none';
-            input.value = "";
+    function triggerStreakJuice() {
+        const el = document.getElementById('stat-streak');
+        el.innerText = state.streak + 1;
+        el.classList.add('pos-pulse');
+        setTimeout(() => el.classList.remove('pos-pulse'), 300);
+    }
+
+    function startPulse() {
+        state.timerActive = true;
+        clearTimeout(currentTimer);
+        const bar = document.getElementById('timer-bar');
+        bar.style.transition = 'none';
+        bar.style.transform = 'scaleX(1)';
+        void bar.offsetWidth;
+        bar.style.transition = `transform ${state.currentSpeed}s linear`;
+        bar.style.transform = 'scaleX(0)';
+        currentTimer = setTimeout(() => gameOver("OUT OF TIME!"), state.currentSpeed * 1000);
+    }
+
+    function showGrid() {
+        state.timerActive = false;
+        clearTimeout(currentTimer);
+        const container = document.getElementById('chip-container');
+        container.innerHTML = "";
+        
+        let options = new Set();
+        options.add(state.count);
+        while(options.size < 8) {
+            let offset = Math.floor(Math.random() * 9) - 4;
+            if (offset === 0) continue;
+            options.add(state.count + offset);
+        }
+
+        Array.from(options).sort(() => Math.random() - 0.5).forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'chip';
+            btn.innerText = opt;
+            btn.onclick = () => handleChoice(opt);
+            container.appendChild(btn);
+        });
+
+        document.getElementById('verify-overlay').style.display = 'flex';
+    }
+
+    function handleChoice(val) {
+        if (val === state.count) {
+            document.body.classList.add('flash-success');
+            setTimeout(() => document.body.classList.remove('flash-success'), 400);
+            
             state.totalSeen = 0;
+            state.cycle++;
             
-            if (state.speed > 1) { state.speed--; toast("SPEED UP!"); } 
-            else { state.batchSize++; state.speed = 3; toast("BATCH INCREASE!"); }
-            
-            document.getElementById('stat-batch').innerText = state.batchSize + "x";
-            
-            resetTimerVisuals(); // Stay paused until they touch the first card of the new cycle
+            if (state.cycle === 2) { state.startSpeed = 5; state.endSpeed = 3; }
+            else if (state.cycle === 3) { state.startSpeed = 4; state.endSpeed = 2; }
+            else { 
+                state.cycle = 1; state.batchSize++; // This is where 2-card mode starts
+                state.startSpeed = 6; state.endSpeed = 4;
+            }
+
+            document.getElementById('verify-overlay').style.display = 'none';
+            toast("JACKPOT!");
+            updateUI();
             spawnNextBatch();
         } else {
-            gameOver(`FAILED! True count was ${state.count}`);
+            gameOver(`FAILED! Actual Count was ${state.count}`);
         }
     }
 
     function toast(msg) {
         const t = document.getElementById('level-toast');
-        t.innerText = msg;
-        t.style.display = 'block';
-        setTimeout(() => t.style.display = 'none', 1500);
+        t.innerText = msg; t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 1000);
     }
 
     function gameOver(msg) {
-        clearTimeout(currentTimer);
-        alert(msg + "\nFinal Streak: " + state.streak);
-        location.reload(); // This handles resetting the streak back to 0
+        alert(msg + "\nStreak: " + state.streak);
+        location.reload();
     }
 
-    state.deck = createDeck();
+    updateUI();
     spawnNextBatch();
 </script>
 </body>

@@ -5,90 +5,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Basement: Easy Mode</title>
+    <title>The Basement: Novice</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <style>
-        :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --neu: #3498db; }
-        body { background: #0a0a0a; color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
+        :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --neu: #3498db; --bg: #0a0a0a; }
+        body { background: var(--bg); color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
         
-        /* Header */
-        #header { padding: 20px 0; border-bottom: 1px solid #222; background: #111; height: 80px; }
-        .tally-label { font-size: 0.7rem; color: #888; letter-spacing: 2px; text-transform: uppercase; }
-        #running-tally { font-size: 2.2rem; font-weight: 900; color: var(--gold); display: block; transition: 0.2s; }
-        .pulse { transform: scale(1.2); color: white !important; }
+        #back-home { position: fixed; top: 15px; left: 15px; z-index: 1000; background: rgba(255,255,255,0.1); color: #888; border: 1px solid #333; padding: 8px 12px; border-radius: 8px; font-size: 0.7rem; text-decoration: none; text-transform: uppercase; }
+        
+        #header { padding: 20px 0; background: #111; border-bottom: 1px solid #222; }
+        #tally-box { font-size: 1rem; color: var(--gold); letter-spacing: 2px; }
+        #current-count { font-size: 2rem; display: block; margin-top: 5px; font-weight: bold; }
 
         /* Card Arena */
-        .card-container { position: relative; height: 60vh; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-top: 10px; }
+        .card-container { position: relative; height: 65vh; display: flex; justify-content: center; align-items: center; perspective: 1000px; z-index: 10; margin-top: 20px; }
         .card { 
             position: absolute; width: 220px; height: 320px; background: white; border-radius: 12px;
             color: black; display: flex; justify-content: center; align-items: center;
             font-size: 5rem; font-weight: bold; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-            border: 3px solid #ccc; touch-action: none; z-index: 5; transition: border 0.2s;
+            border: 3px solid #ccc; touch-action: none; z-index: 10; /* Card is on top */
         }
 
-        /* Guides */
-        .guide-arrow { position: absolute; font-size: 0.7rem; font-weight: bold; opacity: 0.4; pointer-events: none; text-transform: uppercase; }
-        .left-arrow { left: 15px; color: var(--pos); }
-        .right-arrow { right: 15px; color: var(--neg); }
-        .down-arrow { bottom: 20px; color: var(--neu); }
+        /* The INTERNAL Halo Zones (Sitting behind the card) */
+        .zone-halo { 
+            position: absolute; pointer-events: none; opacity: 0; 
+            font-weight: 900; font-size: 1.2rem; text-transform: uppercase; 
+            letter-spacing: 2px; transition: opacity 0.2s, transform 0.2s;
+            z-index: 1; /* Indicators are behind */
+        }
+        
+        /* These sit directly behind the card's neutral position */
+        .halo-left { left: 20px; color: var(--pos); border-left: 5px solid var(--pos); padding-left: 15px; }
+        .halo-right { right: 20px; color: var(--neg); border-right: 5px solid var(--neg); padding-right: 15px; }
+        .halo-bottom { bottom: 40px; color: var(--neu); border-bottom: 5px solid var(--neu); padding-bottom: 10px; width: 180px; }
 
-        /* Footer */
-        #footer { position: fixed; bottom: 0; width: 100%; background: #111; padding: 15px 0; border-top: 2px solid #333; display: flex; justify-content: space-around; }
-        .ref-item { font-size: 0.65rem; }
-        .ref-item span { display: block; font-size: 1rem; font-weight: bold; margin-bottom: 2px; }
+        /* Active highlighting - revealed as card moves */
+        .active-halo { opacity: 1 !important; transform: scale(1.1); }
+
+        /* Pop Feedback */
+        #feedback-pop { 
+            position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 6rem; font-weight: 900; opacity: 0; z-index: 100; pointer-events: none;
+        }
+        .pop-animation { animation: popUp 0.5s ease-out forwards; }
+        @keyframes popUp {
+            0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
+            40% { opacity: 1; transform: translate(-50%, -50px) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -100px) scale(1); }
+        }
     </style>
 </head>
 <body>
 
+    <a href="index.html" id="back-home">← Home</a>
+
     <div id="header">
-        <span class="tally-label">Running Count</span>
-        <span id="running-tally">0</span>
+        <div id="tally-box">COUNT: <span id="current-count">0</span></div>
     </div>
+    
+    <div id="feedback-pop"></div>
 
     <div class="card-container" id="arena">
-        <div class="guide-arrow left-arrow">← LOW (+1)</div>
-        <div class="guide-arrow right-arrow">HIGH (-1) →</div>
-        <div class="guide-arrow down-arrow">↓ NEUTRAL (0) ↓</div>
-    </div>
-
-    <div id="footer">
-        <div class="ref-item" style="color:var(--pos)"><span>2 - 6</span>+1</div>
-        <div class="ref-item" style="color:var(--neu)"><span>7 - 9</span>0</div>
-        <div class="ref-item" style="color:var(--neg)"><span>10 - A</span>-1</div>
+        <div class="zone-halo halo-left">+1 LOW</div>
+        <div class="zone-halo halo-right">-1 HIGH</div>
+        <div class="zone-halo halo-bottom">0 NEUTRAL</div>
     </div>
 
 <script>
-    let state = {
-        deck: [],
-        count: 0
-    };
+    let state = { deck: [], count: 0 };
 
     function createDeck() {
         const v = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
         let d = [];
-        // 1 deck for the drill
         for(let i=0; i<4; i++) v.forEach(val => d.push(val));
         return d.sort(() => Math.random() - 0.5);
     }
 
-    function updateTally(change) {
-        state.count += change;
-        const tallyEl = document.getElementById('running-tally');
-        tallyEl.innerText = state.count;
-        tallyEl.classList.add('pulse');
-        setTimeout(() => tallyEl.classList.remove('pulse'), 200);
+    function showFloatingFeedback(text, color) {
+        const pop = document.getElementById('feedback-pop');
+        pop.innerText = text;
+        pop.style.color = color;
+        pop.classList.remove('pop-animation');
+        void pop.offsetWidth;
+        pop.classList.add('pop-animation');
     }
 
     function spawn() {
-        if (state.deck.length === 0) {
-            alert("Basement Drill Complete! Final Count: " + state.count);
-            state.deck = createDeck();
-            state.count = 0;
-            document.getElementById('running-tally').innerText = "0";
-            spawn();
-            return;
-        }
-
+        if (state.deck.length === 0) state.deck = createDeck();
         const val = state.deck.pop();
         const card = document.createElement('div');
         card.className = 'card';
@@ -98,58 +101,57 @@
         const mc = new Hammer(card);
         mc.get('pan').set({ direction: Hammer.DIRECTION_ALL, threshold: 5 });
 
-        mc.on("pan", (ev) => {
-            card.style.transform = `translate(${ev.deltaX * 0.4}px, ${ev.deltaY * 0.4}px) rotate(${ev.deltaX / 15}deg)`;
+        mc.on("pan", ev => {
+            card.style.transform = `translate(${ev.deltaX * 0.45}px, ${ev.deltaY * 0.45}px) rotate(${ev.deltaX / 15}deg) scale(0.95)`;
+            
+            const haloL = document.querySelector('.halo-left');
+            const haloR = document.querySelector('.halo-right');
+            const haloB = document.querySelector('.halo-bottom');
+
+            // Reveal and highlight as you move away from center
+            if (ev.deltaX < -30) haloL.classList.add('active-halo'); else haloL.classList.remove('active-halo');
+            if (ev.deltaX > 30) haloR.classList.add('active-halo'); else haloR.classList.remove('active-halo');
+            if (ev.deltaY > 30) haloB.classList.add('active-halo'); else haloB.classList.remove('active-halo');
         });
 
-        mc.on("panend", (ev) => {
-            const threshold = 80;
-            const velocity = Math.abs(ev.velocityX) > 0.4;
-            
+        mc.on("panend", ev => {
+            document.querySelectorAll('.zone-halo').forEach(z => z.classList.remove('active-halo'));
+
             const isLow = ['2','3','4','5','6'].includes(val);
             const isHigh = ['10','J','Q','K','A'].includes(val);
             const isNeutral = ['7','8','9'].includes(val);
 
-            let attempt = "";
-            if (ev.deltaX < -threshold || (ev.deltaX < -40 && ev.velocityX < -0.4)) attempt = "LEFT";
-            else if (ev.deltaX > threshold || (ev.deltaX > 40 && ev.velocityX > 0.4)) attempt = "RIGHT";
-            else if (ev.deltaY > threshold || (ev.deltaY > 40 && ev.velocityY > 0.4)) attempt = "DOWN";
+            let dir = "";
+            const thresh = 80;
 
-            // STRICT VALIDATION
-            const success = (attempt === "LEFT" && isLow) || 
-                            (attempt === "RIGHT" && isHigh) || 
-                            (attempt === "DOWN" && isNeutral);
+            if (ev.deltaX < -thresh || (ev.deltaX < -40 && ev.velocityX < -0.4)) dir = "L";
+            else if (ev.deltaX > thresh || (ev.deltaX > 35 && ev.velocityX > 0.4)) dir = "R";
+            else if (ev.deltaY > thresh || (ev.deltaY > 35 && ev.velocityY > 0.4)) dir = "D";
 
-            if (success) {
-                const change = isLow ? 1 : (isHigh ? -1 : 0);
-                updateTally(change);
-                exit(card, attempt === "LEFT" ? -1000 : (attempt === "RIGHT" ? 1000 : 0), attempt === "DOWN" ? 1000 : 0);
-            } 
-            else if (attempt !== "") {
-                // Bounce back on error
-                card.style.transition = "0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-                card.style.border = "4px solid var(--neg)";
-                card.style.transform = "translate(0,0) rotate(0deg) scale(1.1)";
-                setTimeout(() => {
-                    card.style.border = "3px solid #ccc";
-                    card.style.transform = "translate(0,0) rotate(0deg) scale(1)";
-                }, 300);
-            } 
-            else {
+            if ((dir==="L" && isLow) || (dir==="R" && isHigh) || (dir==="D" && isNeutral)) {
+                if (isLow) { state.count++; showFloatingFeedback("+1", "var(--pos)"); }
+                if (isHigh) { state.count--; showFloatingFeedback("-1", "var(--neg)"); }
+                if (isNeutral) { showFloatingFeedback("0", "var(--neu)"); }
+                document.getElementById('current-count').innerText = state.count;
+                exit(card, dir);
+            } else if (dir !== "") {
                 card.style.transition = "0.2s";
-                card.style.transform = "translate(0,0) rotate(0deg)";
+                card.style.border = "5px solid var(--neg)";
+                setTimeout(() => { card.style.border = "3px solid #ccc"; card.style.transform = "translate(0,0)"; }, 300);
+            } else {
+                card.style.transition = "0.2s";
+                card.style.transform = "translate(0,0)";
             }
         });
     }
 
-    function exit(el, x, y) {
+    function exit(el, dir) {
         el.style.transition = "0.3s ease-out";
-        el.style.transform = `translate(${x}px, ${y}px) rotate(${x / 10}deg)`;
+        let x = dir === "L" ? -1000 : (dir === "R" ? 1000 : 0);
+        let y = dir === "D" ? 1000 : 0;
+        el.style.transform = `translate(${x}px, ${y}px) rotate(${x/10}deg)`;
         el.style.opacity = "0";
-        setTimeout(() => {
-            el.remove();
-            spawn();
-        }, 200);
+        setTimeout(() => { el.remove(); spawn(); }, 180);
     }
 
     state.deck = createDeck();

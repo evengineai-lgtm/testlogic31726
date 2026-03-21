@@ -5,11 +5,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Strip: Whale Mode</title>
+    <title>The Strip: Pulse Mode</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <style>
         :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --joker: #9b59b6; --bg: #0a0a0a; }
-        body { background: var(--bg); color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
+        body { background: var(--bg); color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; touch-action: none; }
         
         #back-home { position: fixed; top: 15px; left: 15px; z-index: 1000; background: rgba(255,255,255,0.1); color: #888; border: 1px solid #333; padding: 8px 12px; border-radius: 8px; font-size: 0.7rem; text-decoration: none; text-transform: uppercase; }
         
@@ -93,11 +93,18 @@
         clearTimeout(currentTimer);
     }
 
-    function startTimer() {
-        if (state.timerActive) return;
-        state.timerActive = true;
-        
+    function startTimerPulse() {
+        // Stop any existing timer
+        clearTimeout(currentTimer);
         const bar = document.getElementById('timer-bar');
+        
+        // Snap back to full
+        bar.style.transition = 'none';
+        bar.style.transform = 'scaleX(1)';
+        void bar.offsetWidth; 
+        
+        // Start the drop
+        state.timerActive = true;
         bar.style.transition = `transform ${state.speed}s linear`;
         bar.style.transform = 'scaleX(0)';
 
@@ -106,13 +113,13 @@
         }, state.speed * 1000);
     }
 
-    function spawnBatch() {
-        resetTimerVisuals();
+    function spawnNextBatch() {
         state.cardsInHand = 0;
         const arena = document.getElementById('arena');
         arena.innerHTML = "";
 
         if (state.totalSeen >= state.checkAt) {
+            resetTimerVisuals();
             document.getElementById('verify-overlay').style.display = 'flex';
             document.getElementById('count-input').focus();
             return;
@@ -133,13 +140,15 @@
         card.style.transform = `translate(${index * 8}px, ${index * 8}px)`;
         document.getElementById('arena').appendChild(card);
 
+        // First touch of the batch starts the pulse
+        const triggerTimer = () => {
+            if (!state.timerActive) startTimerPulse();
+            card.removeEventListener('pointerdown', triggerTimer);
+        };
+        card.addEventListener('pointerdown', triggerTimer);
+
         const mc = new Hammer(card);
         mc.get('pan').set({ direction: Hammer.DIRECTION_ALL, threshold: 0 });
-
-        mc.on("panstart", () => {
-            // Trigger timer immediately when the finger touches/starts moving
-            if (!state.timerActive) startTimer();
-        });
 
         mc.on("pan", ev => {
             card.style.transform = `translate(${ev.deltaX + (index*8)}px, ${ev.deltaY + (index*8)}px) rotate(${ev.deltaX/12}deg)`;
@@ -172,8 +181,13 @@
                 document.getElementById('stat-streak').innerText = state.streak;
                 card.remove();
                 
+                // IF CORRECT: Trigger a fresh timer pulse for the next card immediately
+                if (state.totalSeen < state.checkAt) {
+                    startTimerPulse();
+                }
+
                 if (state.cardsInHand === state.batchSize) {
-                    spawnBatch();
+                    spawnNextBatch();
                 }
             } else if (dir !== "") {
                 gameOver(isJoker ? "JOKERS SWIPE UP!" : "WRONG DIRECTION!");
@@ -186,23 +200,18 @@
     function checkCount() {
         const input = document.getElementById('count-input');
         const userGuess = parseInt(input.value);
-        
         if (userGuess === state.count) {
             document.getElementById('verify-overlay').style.display = 'none';
             input.value = "";
             state.totalSeen = 0;
             
-            if (state.speed > 1) {
-                state.speed--;
-                toast("SPEED UP!");
-            } else {
-                state.batchSize++;
-                state.speed = 3;
-                toast("BATCH SIZE INCREASE!");
-            }
+            if (state.speed > 1) { state.speed--; toast("SPEED UP!"); } 
+            else { state.batchSize++; state.speed = 3; toast("BATCH INCREASE!"); }
             
             document.getElementById('stat-batch').innerText = state.batchSize + "x";
-            spawnBatch();
+            
+            resetTimerVisuals(); // Stay paused until they touch the first card of the new cycle
+            spawnNextBatch();
         } else {
             gameOver(`FAILED! True count was ${state.count}`);
         }
@@ -218,11 +227,11 @@
     function gameOver(msg) {
         clearTimeout(currentTimer);
         alert(msg + "\nFinal Streak: " + state.streak);
-        location.reload();
+        location.reload(); // This handles resetting the streak back to 0
     }
 
     state.deck = createDeck();
-    spawnBatch();
+    spawnNextBatch();
 </script>
 </body>
 </html>

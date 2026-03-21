@@ -11,21 +11,17 @@
         :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --joker: #9b59b6; --bg: #0a0a0a; }
         body { background: var(--bg); color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
         
-        /* Navigation & Status */
         #back-home { position: fixed; top: 15px; left: 15px; z-index: 1000; background: rgba(255,255,255,0.1); color: #888; border: 1px solid #333; padding: 8px 12px; border-radius: 8px; font-size: 0.7rem; text-decoration: none; text-transform: uppercase; }
         
         #header { padding: 25px 20px 15px; background: #111; border-bottom: 1px solid #222; position: relative; }
         .stat-group { display: flex; flex-direction: column; align-items: center; }
         .stat-label { font-size: 0.6rem; color: #555; letter-spacing: 2px; margin-bottom: 4px; }
         .stat-val-main { color: var(--gold); font-size: 2.5rem; font-weight: 900; line-height: 1; }
-        
         #batch-tag { position: absolute; right: 20px; bottom: 15px; color: #444; font-size: 0.8rem; font-weight: bold; border: 1px solid #222; padding: 4px 8px; border-radius: 4px; }
 
-        /* Timer Bar */
         #timer-container { width: 100%; height: 8px; background: #1a1a1a; overflow: hidden; }
-        #timer-bar { width: 100%; height: 100%; background: var(--gold); transform-origin: left; }
+        #timer-bar { width: 100%; height: 100%; background: var(--gold); transform-origin: left; transform: scaleX(1); }
 
-        /* Arena */
         .card-container { position: relative; height: 55vh; width: 100%; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-top: 20px; }
         .card { 
             position: absolute; width: 210px; height: 300px; background: white; border-radius: 14px;
@@ -35,7 +31,6 @@
         }
         .joker-card { background: #1a1a1a !important; color: var(--joker) !important; border: 4px solid var(--joker) !important; font-size: 2.5rem !important; }
 
-        /* Verification Overlay */
         #verify-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
         .verify-box { background: #1a1a1a; padding: 30px; border-radius: 15px; border: 2px solid var(--gold); width: 80%; max-width: 300px; }
         #count-input { width: 100%; background: #000; border: 1px solid #444; color: var(--gold); font-size: 3.5rem; text-align: center; margin: 20px 0; border-radius: 8px; outline: none; }
@@ -76,7 +71,7 @@
         deck: [], count: 0, streak: 0, 
         cardsInHand: 0, batchSize: 1, 
         speed: 5, totalSeen: 0, checkAt: 10,
-        timerStarted: false
+        timerActive: false 
     };
     let currentTimer;
 
@@ -90,31 +85,34 @@
         return d.sort(() => Math.random() - 0.5);
     }
 
-    function startVisualTimer() {
+    function resetTimerBar() {
         const bar = document.getElementById('timer-bar');
         bar.style.transition = 'none';
         bar.style.transform = 'scaleX(1)';
-        
-        // Force reflow
-        void bar.offsetWidth;
+        state.timerActive = false;
+        clearTimeout(currentTimer);
+    }
 
+    function startTimer() {
+        if (state.timerActive) return;
+        state.timerActive = true;
+        
+        const bar = document.getElementById('timer-bar');
         bar.style.transition = `transform ${state.speed}s linear`;
         bar.style.transform = 'scaleX(0)';
 
-        clearTimeout(currentTimer);
         currentTimer = setTimeout(() => {
             gameOver("TIME EXPIRED!");
         }, state.speed * 1000);
     }
 
     function spawnBatch() {
+        resetTimerBar();
         state.cardsInHand = 0;
         const arena = document.getElementById('arena');
         arena.innerHTML = "";
 
         if (state.totalSeen >= state.checkAt) {
-            state.timerStarted = false; // Reset for next round
-            document.getElementById('timer-bar').style.transform = 'scaleX(1)';
             document.getElementById('verify-overlay').style.display = 'flex';
             document.getElementById('count-input').focus();
             return;
@@ -132,24 +130,19 @@
         card.className = val === "JOKER" ? 'card joker-card' : 'card';
         card.innerText = val;
         
-        // Slightly offset stacked cards
         card.style.transform = `translate(${index * 8}px, ${index * 8}px)`;
-        arena.appendChild(card);
+        document.getElementById('arena').appendChild(card);
 
         const mc = new Hammer(card);
         mc.get('pan').set({ direction: Hammer.DIRECTION_ALL });
 
         mc.on("pan", ev => {
+            // Timer starts as soon as the user touches/pans the first card of a batch
+            if (!state.timerActive) startTimer();
             card.style.transform = `translate(${ev.deltaX + (index*8)}px, ${ev.deltaY + (index*8)}px) rotate(${ev.deltaX/12}deg)`;
         });
 
         mc.on("panend", ev => {
-            // Start timer on the very first action of the session
-            if (!state.timerStarted) {
-                state.timerStarted = true;
-                startVisualTimer();
-            }
-
             const isLow = ['2','3','4','5','6'].includes(val);
             const isHigh = ['10','J','Q','K','A'].includes(val);
             const isNeutral = ['7','8','9'].includes(val);
@@ -178,8 +171,6 @@
                 
                 if (state.cardsInHand === state.batchSize) {
                     spawnBatch();
-                    // Reset timer for the new batch
-                    if (state.totalSeen < state.checkAt) startVisualTimer();
                 }
             } else if (dir !== "") {
                 gameOver(isJoker ? "JOKERS SWIPE UP!" : "WRONG DIRECTION!");

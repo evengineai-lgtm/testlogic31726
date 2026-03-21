@@ -5,155 +5,230 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Basement: Easy Mode</title>
+    <title>The Strip: Whale Mode</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
     <style>
-        :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --neu: #3498db; }
-        body { background: #0a0a0a; color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
+        :root { --gold: #f1c40f; --pos: #2ecc71; --neg: #e74c3c; --joker: #9b59b6; --bg: #0a0a0a; }
+        body { background: var(--bg); color: white; font-family: sans-serif; text-align: center; margin: 0; overflow: hidden; height: 100vh; }
         
-        /* Header */
-        #header { padding: 20px 0; border-bottom: 1px solid #222; background: #111; height: 80px; }
-        .tally-label { font-size: 0.7rem; color: #888; letter-spacing: 2px; text-transform: uppercase; }
-        #running-tally { font-size: 2.2rem; font-weight: 900; color: var(--gold); display: block; transition: 0.2s; }
-        .pulse { transform: scale(1.2); color: white !important; }
+        /* Navigation & Status */
+        #back-home { position: fixed; top: 15px; left: 15px; z-index: 1000; background: rgba(255,255,255,0.1); color: #888; border: 1px solid #333; padding: 8px 12px; border-radius: 8px; font-size: 0.7rem; text-decoration: none; text-transform: uppercase; }
+        
+        #header { padding: 25px 20px 15px; background: #111; border-bottom: 1px solid #222; position: relative; }
+        .stat-group { display: flex; flex-direction: column; align-items: center; }
+        .stat-label { font-size: 0.6rem; color: #555; letter-spacing: 2px; margin-bottom: 4px; }
+        .stat-val-main { color: var(--gold); font-size: 2.5rem; font-weight: 900; line-height: 1; }
+        
+        #batch-tag { position: absolute; right: 20px; bottom: 15px; color: #444; font-size: 0.8rem; font-weight: bold; border: 1px solid #222; padding: 4px 8px; border-radius: 4px; }
 
-        /* Card Arena */
-        .card-container { position: relative; height: 60vh; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-top: 10px; }
+        /* Timer Bar */
+        #timer-container { width: 100%; height: 8px; background: #1a1a1a; overflow: hidden; }
+        #timer-bar { width: 100%; height: 100%; background: var(--gold); transform-origin: left; }
+
+        /* Arena */
+        .card-container { position: relative; height: 55vh; width: 100%; display: flex; justify-content: center; align-items: center; perspective: 1000px; margin-top: 20px; }
         .card { 
-            position: absolute; width: 220px; height: 320px; background: white; border-radius: 12px;
+            position: absolute; width: 210px; height: 300px; background: white; border-radius: 14px;
             color: black; display: flex; justify-content: center; align-items: center;
-            font-size: 5rem; font-weight: bold; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-            border: 3px solid #ccc; touch-action: none; z-index: 5; transition: border 0.2s;
+            font-size: 5rem; font-weight: bold; box-shadow: 0 15px 50px rgba(0,0,0,0.9);
+            border: 2px solid #ccc; touch-action: none; z-index: 10;
         }
+        .joker-card { background: #1a1a1a !important; color: var(--joker) !important; border: 4px solid var(--joker) !important; font-size: 2.5rem !important; }
 
-        /* Guides */
-        .guide-arrow { position: absolute; font-size: 0.7rem; font-weight: bold; opacity: 0.4; pointer-events: none; text-transform: uppercase; }
-        .left-arrow { left: 15px; color: var(--pos); }
-        .right-arrow { right: 15px; color: var(--neg); }
-        .down-arrow { bottom: 20px; color: var(--neu); }
+        /* Verification Overlay */
+        #verify-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
+        .verify-box { background: #1a1a1a; padding: 30px; border-radius: 15px; border: 2px solid var(--gold); width: 80%; max-width: 300px; }
+        #count-input { width: 100%; background: #000; border: 1px solid #444; color: var(--gold); font-size: 3.5rem; text-align: center; margin: 20px 0; border-radius: 8px; outline: none; }
+        .verify-btn { background: var(--gold); color: black; border: none; padding: 18px; width: 100%; font-weight: 900; border-radius: 8px; font-size: 1.2rem; }
 
-        /* Footer */
-        #footer { position: fixed; bottom: 0; width: 100%; background: #111; padding: 15px 0; border-top: 2px solid #333; display: flex; justify-content: space-around; }
-        .ref-item { font-size: 0.65rem; }
-        .ref-item span { display: block; font-size: 1rem; font-weight: bold; margin-bottom: 2px; }
+        #level-toast { position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%); color: var(--gold); font-weight: 900; font-size: 2rem; z-index: 3000; display: none; text-shadow: 0 0 20px black; }
     </style>
 </head>
 <body>
 
+    <a href="index.html" id="back-home">← Home</a>
+
     <div id="header">
-        <span class="tally-label">Running Count</span>
-        <span id="running-tally">0</span>
+        <div class="stat-group">
+            <span class="stat-label">STREAK</span>
+            <span id="stat-streak" class="stat-val-main">0</span>
+        </div>
+        <div id="batch-tag">BATCH: <span id="stat-batch">1x</span></div>
     </div>
+    
+    <div id="timer-container"><div id="timer-bar"></div></div>
+    
+    <div id="level-toast">SPEED UP!</div>
 
-    <div class="card-container" id="arena">
-        <div class="guide-arrow left-arrow">← LOW (+1)</div>
-        <div class="guide-arrow right-arrow">HIGH (-1) →</div>
-        <div class="guide-arrow down-arrow">↓ NEUTRAL (0) ↓</div>
-    </div>
+    <div class="card-container" id="arena"></div>
 
-    <div id="footer">
-        <div class="ref-item" style="color:var(--pos)"><span>2 - 6</span>+1</div>
-        <div class="ref-item" style="color:var(--neu)"><span>7 - 9</span>0</div>
-        <div class="ref-item" style="color:var(--neg)"><span>10 - A</span>-1</div>
+    <div id="verify-overlay">
+        <div class="verify-box">
+            <h3 style="margin:0; color:white; letter-spacing:1px;">VERIFY COUNT</h3>
+            <input type="number" id="count-input" inputmode="numeric" placeholder="0">
+            <button class="verify-btn" onclick="checkCount()">SUBMIT</button>
+            <p id="error-msg" style="color:var(--neg); margin-top:15px; display:none;"></p>
+        </div>
     </div>
 
 <script>
-    let state = {
-        deck: [],
-        count: 0
+    let state = { 
+        deck: [], count: 0, streak: 0, 
+        cardsInHand: 0, batchSize: 1, 
+        speed: 5, totalSeen: 0, checkAt: 10,
+        timerStarted: false
     };
+    let currentTimer;
 
     function createDeck() {
         const v = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-        let d = [];
-        // 1 deck for the drill
-        for(let i=0; i<4; i++) v.forEach(val => d.push(val));
+        let d = []; 
+        for(let i=0; i<8; i++) {
+            v.forEach(val => d.push(val));
+            if(Math.random() > 0.75) d.push("JOKER");
+        }
         return d.sort(() => Math.random() - 0.5);
     }
 
-    function updateTally(change) {
-        state.count += change;
-        const tallyEl = document.getElementById('running-tally');
-        tallyEl.innerText = state.count;
-        tallyEl.classList.add('pulse');
-        setTimeout(() => tallyEl.classList.remove('pulse'), 200);
+    function startVisualTimer() {
+        const bar = document.getElementById('timer-bar');
+        bar.style.transition = 'none';
+        bar.style.transform = 'scaleX(1)';
+        
+        // Force reflow
+        void bar.offsetWidth;
+
+        bar.style.transition = `transform ${state.speed}s linear`;
+        bar.style.transform = 'scaleX(0)';
+
+        clearTimeout(currentTimer);
+        currentTimer = setTimeout(() => {
+            gameOver("TIME EXPIRED!");
+        }, state.speed * 1000);
     }
 
-    function spawn() {
-        if (state.deck.length === 0) {
-            alert("Basement Drill Complete! Final Count: " + state.count);
-            state.deck = createDeck();
-            state.count = 0;
-            document.getElementById('running-tally').innerText = "0";
-            spawn();
+    function spawnBatch() {
+        state.cardsInHand = 0;
+        const arena = document.getElementById('arena');
+        arena.innerHTML = "";
+
+        if (state.totalSeen >= state.checkAt) {
+            state.timerStarted = false; // Reset for next round
+            document.getElementById('timer-bar').style.transform = 'scaleX(1)';
+            document.getElementById('verify-overlay').style.display = 'flex';
+            document.getElementById('count-input').focus();
             return;
         }
 
+        for (let i = 0; i < state.batchSize; i++) {
+            spawnCard(i);
+        }
+    }
+
+    function spawnCard(index) {
+        if (state.deck.length === 0) state.deck = createDeck();
         const val = state.deck.pop();
         const card = document.createElement('div');
-        card.className = 'card';
+        card.className = val === "JOKER" ? 'card joker-card' : 'card';
         card.innerText = val;
-        document.getElementById('arena').appendChild(card);
+        
+        // Slightly offset stacked cards
+        card.style.transform = `translate(${index * 8}px, ${index * 8}px)`;
+        arena.appendChild(card);
 
         const mc = new Hammer(card);
-        mc.get('pan').set({ direction: Hammer.DIRECTION_ALL, threshold: 5 });
+        mc.get('pan').set({ direction: Hammer.DIRECTION_ALL });
 
-        mc.on("pan", (ev) => {
-            card.style.transform = `translate(${ev.deltaX * 0.4}px, ${ev.deltaY * 0.4}px) rotate(${ev.deltaX / 15}deg)`;
+        mc.on("pan", ev => {
+            card.style.transform = `translate(${ev.deltaX + (index*8)}px, ${ev.deltaY + (index*8)}px) rotate(${ev.deltaX/12}deg)`;
         });
 
-        mc.on("panend", (ev) => {
-            const threshold = 80;
-            const velocity = Math.abs(ev.velocityX) > 0.4;
-            
+        mc.on("panend", ev => {
+            // Start timer on the very first action of the session
+            if (!state.timerStarted) {
+                state.timerStarted = true;
+                startVisualTimer();
+            }
+
             const isLow = ['2','3','4','5','6'].includes(val);
             const isHigh = ['10','J','Q','K','A'].includes(val);
             const isNeutral = ['7','8','9'].includes(val);
+            const isJoker = val === "JOKER";
 
-            let attempt = "";
-            if (ev.deltaX < -threshold || (ev.deltaX < -40 && ev.velocityX < -0.4)) attempt = "LEFT";
-            else if (ev.deltaX > threshold || (ev.deltaX > 40 && ev.velocityX > 0.4)) attempt = "RIGHT";
-            else if (ev.deltaY > threshold || (ev.deltaY > 40 && ev.velocityY > 0.4)) attempt = "DOWN";
+            let dir = "";
+            if (ev.deltaX < -60) dir = "L";
+            else if (ev.deltaX > 60) dir = "R";
+            else if (ev.deltaY > 60) dir = "D";
+            else if (ev.deltaY < -60) dir = "U";
 
-            // STRICT VALIDATION
-            const success = (attempt === "LEFT" && isLow) || 
-                            (attempt === "RIGHT" && isHigh) || 
-                            (attempt === "DOWN" && isNeutral);
+            let correct = false;
+            if (isJoker && dir === "U") correct = true;
+            else if (!isJoker) {
+                if (dir === "L" && isLow) { state.count++; correct = true; }
+                else if (dir === "R" && isHigh) { state.count--; correct = true; }
+                else if (dir === "D" && isNeutral) { correct = true; }
+            }
 
-            if (success) {
-                const change = isLow ? 1 : (isHigh ? -1 : 0);
-                updateTally(change);
-                exit(card, attempt === "LEFT" ? -1000 : (attempt === "RIGHT" ? 1000 : 0), attempt === "DOWN" ? 1000 : 0);
-            } 
-            else if (attempt !== "") {
-                // Bounce back on error
-                card.style.transition = "0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
-                card.style.border = "4px solid var(--neg)";
-                card.style.transform = "translate(0,0) rotate(0deg) scale(1.1)";
-                setTimeout(() => {
-                    card.style.border = "3px solid #ccc";
-                    card.style.transform = "translate(0,0) rotate(0deg) scale(1)";
-                }, 300);
-            } 
-            else {
-                card.style.transition = "0.2s";
-                card.style.transform = "translate(0,0) rotate(0deg)";
+            if (correct) {
+                state.streak++;
+                state.totalSeen++;
+                state.cardsInHand++;
+                document.getElementById('stat-streak').innerText = state.streak;
+                card.remove();
+                
+                if (state.cardsInHand === state.batchSize) {
+                    spawnBatch();
+                    // Reset timer for the new batch
+                    if (state.totalSeen < state.checkAt) startVisualTimer();
+                }
+            } else if (dir !== "") {
+                gameOver(isJoker ? "JOKERS SWIPE UP!" : "WRONG DIRECTION!");
+            } else {
+                card.style.transform = `translate(${index * 8}px, ${index * 8}px)`;
             }
         });
     }
 
-    function exit(el, x, y) {
-        el.style.transition = "0.3s ease-out";
-        el.style.transform = `translate(${x}px, ${y}px) rotate(${x / 10}deg)`;
-        el.style.opacity = "0";
-        setTimeout(() => {
-            el.remove();
-            spawn();
-        }, 200);
+    function checkCount() {
+        const input = document.getElementById('count-input');
+        const userGuess = parseInt(input.value);
+        
+        if (userGuess === state.count) {
+            document.getElementById('verify-overlay').style.display = 'none';
+            input.value = "";
+            state.totalSeen = 0;
+            
+            if (state.speed > 1) {
+                state.speed--;
+                toast("SPEED UP!");
+            } else {
+                state.batchSize++;
+                state.speed = 3;
+                toast("BATCH SIZE INCREASE!");
+            }
+            
+            document.getElementById('stat-batch').innerText = state.batchSize + "x";
+            spawnBatch();
+        } else {
+            gameOver(`FAILED! True count was ${state.count}`);
+        }
+    }
+
+    function toast(msg) {
+        const t = document.getElementById('level-toast');
+        t.innerText = msg;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 1500);
+    }
+
+    function gameOver(msg) {
+        clearTimeout(currentTimer);
+        alert(msg + "\nFinal Streak: " + state.streak);
+        location.reload();
     }
 
     state.deck = createDeck();
-    spawn();
+    spawnBatch();
 </script>
 </body>
 </html>
